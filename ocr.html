@@ -1,3 +1,154 @@
-<html>
-  <head>
-    <title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>OCR Project | Image & PDF | Hindi + English</title>
+
+  <!-- Tesseract OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 30px;
+    }
+    .box {
+      background: white;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; }
+    textarea {
+      width: 100%;
+      height: 250px;
+      margin-top: 15px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    select, input {
+      margin-top: 10px;
+    }
+    #progress {
+      margin-top: 10px;
+      font-weight: bold;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>OCR Project (Image & PDF)</h2>
+
+  <input type="file" id="fileInput" accept="image/*,.pdf" />
+  <br />
+
+  <label>Select Language:</label>
+  <select id="language">
+    <option value="eng">English</option>
+    <option value="hin">Hindi</option>
+    <option value="eng+hin">English + Hindi</option>
+  </select>
+
+  <br />
+  <button onclick="runOCR()">Extract Text</button>
+
+  <div id="progress"></div>
+
+  <textarea id="result" placeholder="Extracted text will appear here..."></textarea>
+  <button onclick="downloadTXT()">Download TXT</button>
+<button onclick="downloadDOCX()">Download DOCX</button>
+</div>
+
+<script>
+async function runOCR() {
+  const fileInput = document.getElementById("fileInput");
+  const lang = document.getElementById("language").value;
+  const result = document.getElementById("result");
+  const progress = document.getElementById("progress");
+
+  if (fileInput.files.length === 0) {
+    alert("Please upload a file");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  result.value = "";
+  progress.innerText = "Processing...";
+
+  // IMAGE OCR
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    const { data } = await Tesseract.recognize(file, lang, {
+      logger: m => progress.innerText = m.status
+    });
+    result.value = data.text;
+    progress.innerText = "Image OCR Completed";
+    return;
+  }
+
+  // PDF OCR
+  const pdfData = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+
+  let fullText = "";
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    progress.innerText = `Processing PDF page ${pageNum} / ${pdf.numPages}`;
+
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 2 });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+
+    const { data } = await Tesseract.recognize(canvas, lang);
+    fullText += data.text + "\n\n";
+  }
+
+  result.value = fullText;
+  progress.innerText = "PDF OCR Completed";
+}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.min.js"></script>
+<script>
+function downloadTXT() {
+  const text = document.getElementById("result").value;
+  const blob = new Blob([text], { type: "text/plain" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "ocr_output.txt";
+  link.click();
+}
+
+function downloadDOCX() {
+  const text = document.getElementById("result").value;
+  const { Document, Packer, Paragraph } = docx;
+
+  const doc = new Document({
+    sections: [{ children: [new Paragraph(text)] }]
+  });
+
+  Packer.toBlob(doc).then(blob => {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "ocr_output.docx";
+    link.click();
+  });
+}
+</script>
