@@ -1,6 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+  // PDF.js worker setup (Important for PDF processing)
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  async function runOCR() {
+    const fileInput = document.getElementById("fileInput");
+    const lang = document.getElementById("language").value;
+    const result = document.getElementById("result");
+    const progress = document.getElementById("progress");
+
+    if (fileInput.files.length === 0) {
+      alert("Please upload a file");
+      return;
+    }
+    
+    const file = fileInput.files[0];
+    result.value = "";
+    progress.innerText = "Processing...";
+
+    try {
+      // IMAGE OCR
+      if (!file.name.toLowerCase().endsWith(".pdf")) {
+        const { data } = await Tesseract.recognize(file, lang, {
+          logger: m => {
+            if (m.status === "recognizing text") {
+              progress.innerText = `Progress: ${Math.round(m.progress * 100)}%`;
+            } else {
+              progress.innerText = m.status;
+            }
+          }
+        });
+        result.value = data.text;
+        progress.innerText = "Image OCR Completed!";
+        return;
+      }
+
+      // PDF OCR
+      const pdfData = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+      const pdf = await loadingTask.promise;
+
+      let fullText = "";
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        progress.innerText = `Processing PDF page ${pageNum} / ${pdf.numPages}`;
+
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2 });
+
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+        const { data } = await Tesseract.recognize(canvas, lang);
+        fullText += `--- Page ${pageNum} ---\n` + data.text + "\n\n";
+      }
+
+      result.value = fullText;
+      progress.innerText = "PDF OCR Completed!";
+    } catch (error) {
+      console.error(error);
+      progress.innerText = "Error: " + error.message;
+    }
+  } // <--- Is bracket ke baad </script> 
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.min.js"></script>
+<script>
+  function downloadTXT() {
+    const text = document.getElementById("result").value;
+    if(!text) return alert("No text to download");
+    const blob = new Blob([text], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "ocr_output.txt";
+    link.click();
+  }
+
+  function downloadDOCX() {
+    const text = document.getElementById("result").value;
+    if(!text) return alert("No text to download");
+    
+    const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+    const doc = new Document({
+      sections: [{
+        children: text.split('\n').map(line => new Paragraph({
+          children: [new TextRun(line)]
+        }))
+      }]
+    });
+
+    Packer.toBlob(doc).then(blob => {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "ocr_output.docx";
+      link.click();
+    });
+  }
+</script>
   <meta charset="UTF-8" />
   <title>OCR Project | Image & PDF | Hindi + English</title>
   <!-- Tesseract OCR -->
