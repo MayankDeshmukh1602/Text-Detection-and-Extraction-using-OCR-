@@ -4,13 +4,11 @@
     <script>
   // PDF.js worker setup (Important for PDF processing)
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
   async function runOCR() {
     const fileInput = document.getElementById("fileInput");
     const lang = document.getElementById("language").value;
     const result = document.getElementById("result");
     const progress = document.getElementById("progress");
-
     if (fileInput.files.length === 0) {
       alert("Please upload a file");
       return;
