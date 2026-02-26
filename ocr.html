@@ -36,7 +36,6 @@
       const pdfData = await file.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({ data: pdfData });
       const pdf = await loadingTask.promise;
-
       let fullText = "";
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         progress.innerText = `Processing PDF page ${pageNum} / ${pdf.numPages}`;
