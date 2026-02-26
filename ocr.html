@@ -32,7 +32,6 @@
         progress.innerText = "Image OCR Completed!";
         return;
       }
-
       // PDF OCR
       const pdfData = await file.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({ data: pdfData });
