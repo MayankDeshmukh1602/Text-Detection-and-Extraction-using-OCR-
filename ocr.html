@@ -51,7 +51,6 @@
         const { data } = await Tesseract.recognize(canvas, lang);
         fullText += `--- Page ${pageNum} ---\n` + data.text + "\n\n";
       }
-
       result.value = fullText;
       progress.innerText = "PDF OCR Completed!";
     } catch (error) {
