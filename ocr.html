@@ -39,7 +39,6 @@
       let fullText = "";
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         progress.innerText = `Processing PDF page ${pageNum} / ${pdf.numPages}`;
-
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 2 });
 
