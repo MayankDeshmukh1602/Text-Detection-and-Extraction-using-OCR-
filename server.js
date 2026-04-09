@@ -27,21 +27,31 @@ const createTableQuery = `
         password VARCHAR(255) NOT NULL
     )
 `;
-pool.query(createTableQuery, (err, result) => {
-    if (err) console.error("Error creating users table:", err);
-    else console.log("Users table checked/created.");
-});
+
+let tableVerified = false;
+function ensureTable(callback) {
+    if (tableVerified) return callback();
+    pool.query(createTableQuery, (err, result) => {
+        if (!err) tableVerified = true;
+        callback(err);
+    });
+}
 
 // Register API
 app.post('/register', (req, res) => {
     const { username, email, password } = req.body;
     const sql = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
-    pool.query(sql, [username, email, password], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(400).json({ error: "User already exists or DB error!" });
-        }
-        res.send({ message: "User Registered Successfully!" });
+    
+    ensureTable((tableErr) => {
+        if (tableErr) return res.status(500).json({ error: "Failed to verify database table." });
+
+        pool.query(sql, [username, email, password], (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(400).json({ error: "User already exists or DB error!" });
+            }
+            res.send({ message: "User Registered Successfully!" });
+        });
     });
 });
 
@@ -49,14 +59,19 @@ app.post('/register', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     const sql = "SELECT * FROM users WHERE username = ? AND password = ?";
-    pool.query(sql, [username, password], (err, results) => {
-        if (err) return res.status(500).json({ error: "Server Error" });
-        
-        if (results.length > 0) {
-            res.send({ message: "Login Success" });
-        } else {
-            res.status(401).json({ error: "Invalid Username or Password!" });
-        }
+    
+    ensureTable((tableErr) => {
+        if (tableErr) return res.status(500).json({ error: "Failed to verify database table." });
+
+        pool.query(sql, [username, password], (err, results) => {
+            if (err) return res.status(500).json({ error: "Server Error" });
+            
+            if (results.length > 0) {
+                res.send({ message: "Login Success" });
+            } else {
+                res.status(401).json({ error: "Invalid Username or Password!" });
+            }
+        });
     });
 });
 
