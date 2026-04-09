@@ -13,7 +13,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'ocr_db',
-    ssl: process.env.DB_HOST ? { rejectUnauthorized: true } : undefined,
+    ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : undefined,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
