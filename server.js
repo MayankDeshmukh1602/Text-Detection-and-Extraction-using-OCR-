@@ -1,18 +1,25 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const path = require('path'); // Path module add kiya frontend ke liye
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- FRONTEND SERVING ---
+// Ye line Render ko batayegi ki sari HTML/CSS files current folder mein hain
+app.use(express.static(path.join(__dirname, './')));
+
 // --- DATABASE CONNECTION ---
 const db = mysql.createConnection({
-    host: 'localhost',
-    port: 3307, // Agar aapka XAMPP 3306 par chal raha hai to 3306 karein
-    user: 'root',
-    password: '', 
-    database: 'ocr_db'
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'ocr_db',
+    // SSL enable kiya cloud database (Aiven/Railway) ke liye
+    ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : false 
 });
 
 db.connect(err => {
@@ -52,4 +59,23 @@ app.post('/login', (req, res) => {
     });
 });
 
-app.listen(5000, () => console.log('🚀 Server started on http://localhost:5000'));p;
+// Admin Route: Get all users
+app.get('/admin/users', (req, res) => {
+    const sql = "SELECT id, username, email FROM users ORDER BY id DESC";
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: "Failed to fetch users" });
+        }
+        res.send(results);
+    });
+});
+
+// --- CATCH-ALL ROUTE ---
+// Agar koi bhi URL hit ho, toh index.html hi dikhao (Frontend ke liye)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server started on port ${PORT}`));
