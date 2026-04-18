@@ -2,7 +2,6 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path'); // Path module add kiya frontend ke liye
-
 const app = express();
 app.use(cors());
 app.use(express.json());
